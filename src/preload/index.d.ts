@@ -1,0 +1,1 @@
+export { ElectronAPI } from './index'

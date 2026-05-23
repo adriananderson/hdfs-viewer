@@ -1,0 +1,36 @@
+{
+  "name": "hdfs-viewer",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "HDFS browser and Parquet file viewer",
+  "scripts": {
+    "dev": "concurrently -n server,vite -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
+    "build": "vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "hyparquet": "^1.25.8",
+    "hyparquet-compressors": "^1.1.1",
+    "multer": "^1.4.5-lts.1",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.11.20",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
+  }
+}
