@@ -7,6 +7,7 @@ import { ParquetViewer } from './components/ParquetViewer'
 
 export function App(): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const navigateRef = useRef<((path: string, push?: boolean) => Promise<void>) | null>(null)
   const { error, setError, setEntries, setCurrentPath, setLoading, setParquetData, setLoadingParquet } =
     useAppStore((s) => ({
       error: s.error,
@@ -18,23 +19,14 @@ export function App(): JSX.Element {
       setLoadingParquet: s.setLoadingParquet
     }))
 
-  // Load root on startup
-  useEffect(() => {
-    setLoading(true)
-    api
-      .hdfsListDir('/')
-      .then((entries) => { setEntries(entries); setCurrentPath('/') })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false))
-  }, [])
-
   const handleOpenParquet = useCallback(
-    async (path: string) => {
+    async (path: string, pushHistory = true) => {
       setError(null)
       setLoadingParquet(true)
       try {
         const result = await api.hdfsReadParquet(path)
         setParquetData(result)
+        if (pushHistory) history.pushState(null, '', path)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
@@ -43,6 +35,40 @@ export function App(): JSX.Element {
     },
     [setError, setLoadingParquet, setParquetData]
   )
+
+  const loadPath = useCallback(async (path: string) => {
+    const isParquetPath = path.endsWith('.parquet') || path.endsWith('.pq')
+    const dirPath = isParquetPath ? (path.substring(0, path.lastIndexOf('/')) || '/') : path
+    setLoading(true)
+    try {
+      const entries = await api.hdfsListDir(dirPath)
+      setEntries(entries)
+      setCurrentPath(dirPath)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+    if (isParquetPath) handleOpenParquet(path, false)
+  }, [setEntries, setCurrentPath, setLoading, setError, handleOpenParquet])
+
+  // Load from URL on startup
+  useEffect(() => {
+    loadPath(window.location.pathname || '/')
+  }, [])
+
+  // Back/forward navigation
+  useEffect(() => {
+    function onPopState() {
+      const path = window.location.pathname || '/'
+      const isParquetPath = path.endsWith('.parquet') || path.endsWith('.pq')
+      const dirPath = isParquetPath ? (path.substring(0, path.lastIndexOf('/')) || '/') : path
+      navigateRef.current?.(dirPath, false)
+      if (isParquetPath) handleOpenParquet(path, false)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [handleOpenParquet])
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = e.target.files?.[0]
@@ -97,7 +123,7 @@ export function App(): JSX.Element {
       <div className="flex-1 flex min-h-0">
         <div className="w-80 flex flex-col border-r border-gray-700 min-h-0 shrink-0 bg-gray-850">
           <FilterBar />
-          <FileBrowser onOpenParquet={handleOpenParquet} />
+          <FileBrowser onOpenParquet={handleOpenParquet} navigateRef={navigateRef} />
         </div>
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <ParquetViewer />

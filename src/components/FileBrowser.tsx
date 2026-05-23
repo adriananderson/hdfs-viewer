@@ -1,3 +1,4 @@
+import { useEffect, type MutableRefObject } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { api } from '../lib/api'
 import type { HdfsEntry } from '../types/hdfs'
@@ -81,7 +82,7 @@ function Breadcrumb({ path, onNavigate }: { path: string; onNavigate: (p: string
   )
 }
 
-export function FileBrowser({ onOpenParquet }: { onOpenParquet: (path: string) => void }): JSX.Element {
+export function FileBrowser({ onOpenParquet, navigateRef }: { onOpenParquet: (path: string) => void; navigateRef?: MutableRefObject<((path: string, push?: boolean) => Promise<void>) | null> }): JSX.Element {
   const currentPath = useAppStore((s) => s.currentPath)
   const loading = useAppStore((s) => s.loading)
   const entries = useAppStore((s) => s.entries)
@@ -92,19 +93,24 @@ export function FileBrowser({ onOpenParquet }: { onOpenParquet: (path: string) =
   const setLoading = useAppStore((s) => s.setLoading)
   const setError = useAppStore((s) => s.setError)
 
-  async function navigate(path: string): Promise<void> {
+  async function navigate(path: string, pushHistory = true): Promise<void> {
     setLoading(true)
     setError(null)
     try {
       const result = await api.hdfsListDir(path)
       setCurrentPath(path)
       setEntries(result)
+      if (pushHistory) history.pushState(null, '', path)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (navigateRef) navigateRef.current = navigate
+  })
 
   function goUp(): void {
     if (currentPath === '/') return
